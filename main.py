@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 
 _steps = [
     "download",
-    "basic_cleaning",
+    "data_clean",
     "data_check",
     "data_split",
     "train_random_forest",
@@ -21,12 +21,15 @@ _steps = [
 
 
 # This automatically reads in the configuration
-@hydra.main(config_name='config')
+@hydra.main(config_name='config', config_path='.', version_base=None)
 def go(config: DictConfig):
 
     # Setup the wandb experiment. All runs will be grouped under this name
     os.environ["WANDB_PROJECT"] = config["main"]["project_name"]
     os.environ["WANDB_RUN_GROUP"] = config["main"]["experiment_name"]
+
+    # get path as the root of the MLflow project
+    root_path = hydra.utils.get_original_cwd()
 
     # Steps to execute
     steps_par = config['main']['steps']
@@ -50,11 +53,20 @@ def go(config: DictConfig):
                 },
             )
 
-        if "basic_cleaning" in active_steps:
-            ##################
-            # Implement here #
-            ##################
-            pass
+        if "data_clean" in active_steps:
+            # Run basic cleaning
+            _ = mlflow.run(
+                os.path.join(root_path, "src", "data_clean"),
+                "main",
+                version='main',
+                env_manager="conda",
+                parameters={
+                    "input_artifact": "sample.csv:latest",
+                    "output_artifact": "clean_sample.csv",
+                    "output_type": "clean_data",
+                    "output_description": "Cleaned data"
+                },
+            )
 
         if "data_check" in active_steps:
             ##################
